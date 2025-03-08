@@ -113,3 +113,24 @@ process.env.UV_THREADPOOL_SIZE = 2;
 | ¿Qué funciones en la librería std de Node usan las características async de los sistemas operativos? | Caso todo sobre redes para todos los sitemas operativos. Algunas otras cosas específicas del SO |
 | ¿Cómo encajan todas estas features de SO en el Event Loop? | Las tareas usando el SO por debajo están reflejadas en nuestro arreglo 'pendingOSTasks' |
 
+
+# Mejorar el rendimiento de Node
+
+Cuando es inviable ajustar el rendimiento directamente en el Event Loop, podemos tomar esta alternativa que nos brinda 2 caminos:
+
+- Usar Node en modo Cluster (recomendado).
+- Usar Worker Threads (experimental).
+
+Cuando desarrollamos con clusters y threads es recomendado no usar nodemon o una librería que refresque los cambios de forma automática ya que puede ser problemático. Lo mejor es bajar y volver a levantar el servidor por nuestra propia cuenta.
+
+
+## Modo cluster
+
+El Cluster manager puede crear, reiniciar y eliminar instancias, también puede enviarles información, entre otras cosas.
+
+```javascript
+const cluster = require("cluster");
+
+console.log(cluster.isMaster);
+```
+
