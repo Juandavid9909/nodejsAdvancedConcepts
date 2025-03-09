@@ -1,25 +1,23 @@
-process.env.UV_THREADPOOL_SIZE = 1;
-const cluster = require("cluster");
+// I'm a child, I'm going to act like a server and do nothing else
+const express = require("express");
+const crypto = require("crypto");
+const app = express();
+const { Worker } = require("worker_threads");
 
-// Is the file being executed in master mode?
-if (cluster.isMaster) {
-    // Cause index.js to be executed *again* but in child mode
-    cluster.fork();
-} else {
-    // I'm a child, I'm going to act like a server and do nothing else
-    const express = require("express");
-    const crypto = require("crypto");
-    const app = express();
+app.get("/", (req, res) => {
+    const worker = new Worker("./worker.js");
 
-    app.get("/", (req, res) => {
-        crypto.pbkdf2("a", "b", 100000, 512, "sha512", () => {
-            res.send("Hi there");
-        });
+    worker.on("message", (message) => {
+        console.log(message);
+
+        res.send(`${ message }`);
     });
 
-    app.get("/fast", (req, res) => {
-        res.send("This was fast");
-    });
+    worker.postMessage("start!");
+});
 
-    app.listen(3000);
-}
+app.get("/fast", (req, res) => {
+    res.send("This was fast");
+});
+
+app.listen(3000);

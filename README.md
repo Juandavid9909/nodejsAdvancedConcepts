@@ -118,19 +118,49 @@ process.env.UV_THREADPOOL_SIZE = 2;
 
 Cuando es inviable ajustar el rendimiento directamente en el Event Loop, podemos tomar esta alternativa que nos brinda 2 caminos:
 
-- Usar Node en modo Cluster (recomendado).
-- Usar Worker Threads (experimental).
+- Usar Node en modo Cluster.
+- Usar Worker Threads.
 
 Cuando desarrollamos con clusters y threads es recomendado no usar nodemon o una librería que refresque los cambios de forma automática ya que puede ser problemático. Lo mejor es bajar y volver a levantar el servidor por nuestra propia cuenta.
 
 
 ## Modo cluster
 
-El Cluster manager puede crear, reiniciar y eliminar instancias, también puede enviarles información, entre otras cosas.
+El Cluster Manager puede crear, reiniciar y eliminar instancias, también puede enviarles información, entre otras cosas.
 
 ```javascript
 const cluster = require("cluster");
 
 console.log(cluster.isMaster);
+
+// Agregar nuevo hijo
+cluster.fork();
 ```
+
+Hacer todo con el Cluster Manager puede llegar a ser difícil y confuso, es por esto que una buena opción es usar PM2 para hacer este manejo de una forma mucho más sencilla. Para instalarlo podemos ejecutar el siguiente comando:
+
+```bash
+npm i -g pm2
+```
+
+| Comando | Explicación |
+|--|--|
+| `pm2 start index.js -i 0` | Ejecutar nuestro archivo con pm2 |
+| `pm2 list` | Ver los clusters |
+| `pm2 show index` | Ver más información sobre estos hijos |
+| `pm2 monit` | Muestra unos gráficos con una información de monitoreo |
+| `pm2 delete index` | Elimina todos los hijos de index |
+
+La bandera `-i` le da el poder a pm2 de decidir cuantas instancias crear.
+
+
+## Webworker Threads
+
+Debemos ser cuidadosos, el hecho de usar esto junto con el modo cluster no garantiza que nuestro rendimiento vaya a aumentar mucho. Es por esto que debemos ser precavidos y no abusar del uso de estas cosas. Para hacer uso de los Webworker Threads podemos instalar el siguiente paquete:
+
+```bash
+npm i webworker-threads --ignore-script
+```
+
+Para comunicar el hilo principal con nuestros Workers tenemos el postMessage (enviar mensaje), y el onmessage (recibir mensaje).
 
