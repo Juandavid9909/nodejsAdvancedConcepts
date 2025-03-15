@@ -164,3 +164,30 @@ npm i webworker-threads --ignore-script
 
 Para comunicar el hilo principal con nuestros Workers tenemos el postMessage (enviar mensaje), y el onmessage (recibir mensaje).
 
+
+# Data caching con Redis
+
+Muchas veces tenemos muchas consultas en nuestro frontend hacia nuestro backend, y esto puede cargar de manera sustancial nuestra aplicación, es por esto que el data caching es bueno, ya que nos permite evitar hacer repetidas veces estas consultas cacheando sus resultados.
+
+```javascript
+const redis = require("redis");
+const redisUrl = "redis://127.0.0.1:6379";
+const client = redis.createClient(redisUrl);
+
+// Setear un valor llave:value
+client.set("hi", "there");
+
+// Obtener valor
+client.get("hi", (err, val) => console.log(val));
+
+// Setear keys anidadas
+client.hset("spanish", "red", "rojo");
+
+// Obtener valor con keys anidadas
+client.hget("spanish", "red", (err, val) => console.log(val));
+```
+
+No se pueden guardar objetos de JavaScript directamente, para hacerlo debemos usar `JSON.stringify` al momento de guardar los registros, y `JSON.parse` para leer el valor.
+
+Para hacer el caching lo que se puede aplicar es en el key guardar el query que se está ejecutando, y en el value el resultado de la ejecución de dicho query.
+
