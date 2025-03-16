@@ -191,3 +191,27 @@ No se pueden guardar objetos de JavaScript directamente, para hacerlo debemos us
 
 Para hacer el caching lo que se puede aplicar es en el key guardar el query que se está ejecutando, y en el value el resultado de la ejecución de dicho query.
 
+Si queremos evitar usar los callbacks y volver los llamados una promesa, podemos hacerlo de la siguiente forma:
+
+```javascript
+const redis = require("redis");
+const redisUrl = "redis://127.0.0.1:6379";
+const client = redis.createClient(redisUrl);
+const util = require("util");
+
+client.get = util.promisify(client.get);
+
+const cachedBlogs = await  client.get(req.user.id);
+
+// Eliminar todas las entries en Redis
+client.flushall();
+```
+
+## Problemas comunes
+
+| Problema | Solución |
+|--|--|
+| El código cacheado no es fácilmente reusable en otra parte de nuestro código base | Hook en la generación y ejecución del query de Mongoose |
+| Los valores de caché nunca expiran | Agregar valores timeados asignados a Redis. También agregar la opción de reiniciar todos los valores luego de un evento específico |
+| Las llaves cacheadas no funcionarán cuando se introduce otra colección u opciones de query | Plantear una solución más robusta para generar las llaves de caché |
+
