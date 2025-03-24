@@ -41,7 +41,7 @@ const pendingOSTasks = [];
 const pendingOperations = [];
 
 // New timers, tasks, operations are recorded from myFile running
-myFile.runCOntents();
+myFile.runContents();
 
 function shouldContinue() {
 	// Check one: Any pending setTimeout, setInterval, setImmediate?
