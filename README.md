@@ -177,6 +177,9 @@ const client = redis.createClient(redisUrl);
 // Setear un valor llave:value
 client.set("hi", "there");
 
+// Setear con un tiempo de expiración de 10 segundos
+client.set(key, JSON.stringify(result), "EX", 10);
+
 // Obtener valor
 client.get("hi", (err, val) => console.log(val));
 
@@ -214,4 +217,105 @@ client.flushall();
 | El código cacheado no es fácilmente reusable en otra parte de nuestro código base | Hook en la generación y ejecución del query de Mongoose |
 | Los valores de caché nunca expiran | Agregar valores timeados asignados a Redis. También agregar la opción de reiniciar todos los valores luego de un evento específico |
 | Las llaves cacheadas no funcionarán cuando se introduce otra colección u opciones de query | Plantear una solución más robusta para generar las llaves de caché |
+
+
+## Crear key usando el nombre de la colección y el id del usuario
+
+Es importante tener en cuenta que los objetos siempre son pasados por referencia, por lo que es indispensable usar funciones como `Object.assign`.
+
+```javascript
+const key  = Object.assign({}, this.getQuery(), {
+	collection: this.mongooseCollection.name
+});
+```
+
+Ahora mismo tenemos un problema con el caching, y es que no logramos identificar qué elementos borrar cuando se agrega uno nuevo a nuestra base de datos. Por ejemplo, si el usuario 1 agrega un nuevo Blog, no sabemos cómo identificarlo para borrar todos los registros asociados a él y así poder limpiar el caching únicamente para los registros de este usuario, pero para ello podemos usar los Nested Hashes.
+
+```javascript
+// Rutas
+app.post('/api/blogs', requireLogin, cleanCache, async(req, res) => {
+	const { title, content } = req.body;
+
+	const blog = new Blog({
+		title,
+		content,
+		_user: req.user.id
+	});
+
+	try {
+		await blog.save();
+		res.send(blog);
+	} catch (err) {
+		res.send(400, err);
+	}
+});
+
+// Middleware
+const { clearHash } = require('../services/cache');
+
+module.exports = async(req, res, next) => {
+	await next();
+
+	clearHash(req.user.id);
+}
+
+// Archivo para caching
+const mongoose = require("mongoose");
+const redis = require("redis");
+
+const redisUrl = "redis://127.0.0.1:6379";
+const client = redis.createClient(redisUrl);
+
+client.hget = util.promisify(client.hget);
+
+const exec = mongoose.Query.prototype.exec;
+
+mongoose.Query.prototype.cache  =  function(options  = {}) {
+	this.useCache = true;
+	this.hashKey = JSON.stringify(options.key  ||  "");
+
+	return this;
+}
+
+mongoose.Query.prototype.exec  =  async  function() {
+	if (!this.useCache) {
+		return exec.apply(this, arguments);
+	}
+
+	console.log("I'M ABOUT TO RUN A QUERY");
+
+	console.log(this.getQuery());
+	console.log(this.mongooseCollection.name);
+
+	const key = Object.assign({}, this.getQuery(), {
+		collection: this.mongooseCollection.name
+	});
+
+	// See if we have a value for "key" in redis
+	const cacheValue = await  client.hget(this.hashKey, key);
+
+	// If we do, return that
+	if (cacheValue) {
+		const doc = JSON.parse(cacheValue);
+
+		Array.isArray(doc) ?
+			doc.forEach(d => new this.model(d)) :
+			new this.model(doc);
+	}
+
+	// Otherwise, issue the query and store the result in redis
+	const result = await exec.apply(this, arguments);
+
+	// Expiration in seconds
+	client.hset(this.hashKey, key, JSON.stringify(result), "EX", 10);
+
+	return  result;
+}
+
+module.exports = {
+	clearHash(hashKey) {
+		client.del(JSON.stringify(hashKey));
+	}
+}
+```
 
